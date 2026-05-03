@@ -1,26 +1,68 @@
 import { useState } from 'react'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth } from '../../firebase'
 import './AuthForm.css'
 
 const AuthForm = ({ mode, onCancel, onComplete }) => {
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [error, setError] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     const isLogin = mode === 'login'
     const title = isLogin ? 'Login to TASK' : 'Create your TASK account'
     const buttonText = isLogin ? 'Login' : 'Sign Up'
     const helperText = isLogin
-        ? 'Use this temporary form now. Real authentication can plug into the same submit handler later.'
-        : 'Create a temporary profile so the navbar can show your first name and avatar.'
+        ? 'Login with the email and password you used when creating your account.'
+        : 'Create your account with Firebase email and password authentication.'
 
-    const handleSubmit = (event) => {
+    const getErrorMessage = (firebaseError) => {
+        switch (firebaseError.code) {
+            case 'auth/email-already-in-use':
+                return 'This email is already registered. Try logging in.'
+            case 'auth/invalid-credential':
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+                return 'Invalid email or password.'
+            case 'auth/password-does-not-meet-requirements':
+            case 'auth/weak-password':
+                return 'Password should be at least 6 characters.'
+            case 'auth/invalid-email':
+                return 'Enter a valid email address.'
+            default:
+                return firebaseError.message || 'Authentication failed.'
+        }
+    }
+
+    const handleSubmit = async (event) => {
         event.preventDefault()
         const trimmedName = fullName.trim()
         const trimmedEmail = email.trim()
-        const displayName = isLogin ? trimmedEmail.split('@')[0] : trimmedName
 
-        if (displayName && trimmedEmail && password) {
-            onComplete({ name: displayName, email: trimmedEmail })
+        setError('')
+        setIsSubmitting(true)
+
+        try {
+            const credential = isLogin
+                ? await signInWithEmailAndPassword(auth, trimmedEmail, password)
+                : await createUserWithEmailAndPassword(auth, trimmedEmail, password)
+
+            if (!isLogin && trimmedName) {
+                await updateProfile(credential.user, { displayName: trimmedName })
+            }
+
+            const displayName = credential.user.displayName || trimmedName || trimmedEmail.split('@')[0]
+
+            onComplete({
+                id: credential.user.uid,
+                name: displayName,
+                email: credential.user.email,
+            })
+        } catch (authError) {
+            setError(getErrorMessage(authError))
+        } finally {
+            setIsSubmitting(false)
         }
     }
 
@@ -31,10 +73,10 @@ const AuthForm = ({ mode, onCancel, onComplete }) => {
                 <div className="auth-form__header">
                     <div>
                         <span className="auth-form__eyebrow">{isLogin ? 'Welcome' : 'New here'}</span>
-                    <h2 className="auth-form__title">{title}</h2>
-                    <p className="auth-form__copy">
+                        <h2 className="auth-form__title">{title}</h2>
+                        <p className="auth-form__copy">
                             {helperText}
-                    </p>
+                        </p>
                     </div>
                     <button className="auth-form__close" type="button" onClick={onCancel} aria-label="Close auth form">
                         ×
@@ -83,8 +125,8 @@ const AuthForm = ({ mode, onCancel, onComplete }) => {
                     </label>
 
                     <div className="auth-form__actions">
-                        <button className="auth-form__button" type="submit">
-                            {buttonText}
+                        <button className="auth-form__button" type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? 'Please wait...' : buttonText}
                         </button>
                         <button
                             className="auth-form__button auth-form__button--ghost"
@@ -94,6 +136,8 @@ const AuthForm = ({ mode, onCancel, onComplete }) => {
                             Cancel
                         </button>
                     </div>
+
+                    {error && <p className="auth-form__error">{error}</p>}
                 </form>
             </div>
         </section>

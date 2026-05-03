@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { auth } from '../../firebase'
 import AuthForm from '../AuthForm/AuthForm'
 import './Navbar.css'
 
@@ -12,6 +14,23 @@ const Navbar = () => {
 
     const userInitial = firstName.charAt(0).toUpperCase()
 
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+                setUser({
+                    id: firebaseUser.uid,
+                    name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                    email: firebaseUser.email,
+                })
+                return
+            }
+
+            setUser(null)
+        })
+
+        return unsubscribe
+    }, [])
+
     const openAuth = (mode) => {
         setAuthMode(mode)
     }
@@ -19,6 +38,11 @@ const Navbar = () => {
     const handleAuthComplete = (authUser) => {
         setUser(authUser)
         setAuthMode('')
+    }
+
+    const handleLogout = async () => {
+        await signOut(auth)
+        setUser(null)
     }
 
     return (
@@ -38,7 +62,7 @@ const Navbar = () => {
                         <button
                             className="navbar__button navbar__button--ghost"
                             type="button"
-                            onClick={() => setUser(null)}
+                            onClick={handleLogout}
                         >
                             Logout
                         </button>
