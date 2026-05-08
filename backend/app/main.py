@@ -9,6 +9,18 @@ from app.database import close_mongo_connection, connect_to_mongo, get_database
 from app.routes import router as task_router
 
 
+def normalize_origin(origin: str) -> str:
+    normalized_origin = origin.strip().rstrip("/")
+
+    if not normalized_origin:
+        return normalized_origin
+
+    if normalized_origin.startswith(("http://", "https://")):
+        return normalized_origin
+
+    return f"https://{normalized_origin}"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     initialize_firebase()
@@ -21,7 +33,12 @@ app = FastAPI(title="TASK API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin, "http://localhost:5173"],
+    allow_origins=[
+        normalize_origin(settings.frontend_origin),
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

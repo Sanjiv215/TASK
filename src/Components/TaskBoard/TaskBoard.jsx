@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
+import { apiUrl } from '../../api'
 import { auth } from '../../firebase'
 import './TaskBoard.css'
 
@@ -95,7 +96,7 @@ const TaskBoard = () => {
 
             try {
                 const token = await authUser.getIdToken()
-                const response = await requestWithTimeout('/api/tasks', {
+                const response = await requestWithTimeout(apiUrl('/api/tasks'), {
                     headers: {
                         Authorization: `Bearer ${token}`,
                     },
@@ -139,7 +140,7 @@ const TaskBoard = () => {
 
         try {
             const authHeaders = await getAuthHeaders()
-            const response = await requestWithTimeout('/api/tasks', {
+            const response = await requestWithTimeout(apiUrl('/api/tasks'), {
                 method: 'POST',
                 headers: {
                     ...authHeaders,
@@ -171,7 +172,7 @@ const TaskBoard = () => {
 
         try {
             const authHeaders = await getAuthHeaders()
-            const response = await requestWithTimeout(`/api/tasks/${taskId}`, {
+            const response = await requestWithTimeout(apiUrl(`/api/tasks/${taskId}`), {
                 method: 'PATCH',
                 headers: {
                     ...authHeaders,
@@ -197,7 +198,7 @@ const TaskBoard = () => {
     const deleteTask = async (taskId) => {
         try {
             const authHeaders = await getAuthHeaders()
-            const response = await requestWithTimeout(`/api/tasks/${taskId}`, {
+            const response = await requestWithTimeout(apiUrl(`/api/tasks/${taskId}`), {
                 method: 'DELETE',
                 headers: authHeaders,
             })

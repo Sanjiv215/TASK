@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import firebase_admin
 from fastapi import Depends, HTTPException, status
@@ -16,6 +17,12 @@ def initialize_firebase() -> None:
     if firebase_admin._apps:
         return
 
+    if settings.firebase_service_account_json:
+        service_account_info = json.loads(settings.firebase_service_account_json)
+        credential = credentials.Certificate(service_account_info)
+        firebase_admin.initialize_app(credential, {"projectId": settings.firebase_project_id})
+        return
+
     if settings.firebase_service_account_path:
         credential = credentials.Certificate(settings.firebase_service_account_path)
         firebase_admin.initialize_app(credential, {"projectId": settings.firebase_project_id})
@@ -25,12 +32,14 @@ def initialize_firebase() -> None:
 
 
 def get_firebase_auth_status() -> dict[str, str | bool]:
-    has_service_account = bool(settings.firebase_service_account_path)
+    has_service_account_json = bool(settings.firebase_service_account_json)
+    has_service_account_path = bool(settings.firebase_service_account_path)
 
     return {
-        "status": "configured" if has_service_account else "missing_credentials",
+        "status": "configured" if has_service_account_json or has_service_account_path else "missing_credentials",
         "project_id": settings.firebase_project_id,
-        "has_service_account_path": has_service_account,
+        "has_service_account_json": has_service_account_json,
+        "has_service_account_path": has_service_account_path,
     }
 
 
